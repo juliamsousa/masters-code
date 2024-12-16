@@ -124,9 +124,135 @@ def plot_pitch(df_scatter, df_lines):
                 ax = ax["pitch"]
             )
 
-    plt.show()
+    # st.pyplot(plt.gcf())
+    st.pyplot(fig)
 
-# ===============================================================================================================================
+@st.fragment
+def calculate_team_centralization(ht_first_sub_passes):
+    number_of_passes = ht_first_sub_passes.groupby(["player_name"]).x.count().reset_index()
+    number_of_passes.rename({'x': 'pass_count'}, axis='columns', inplace=True)
+
+    max_number_of_passes = number_of_passes["pass_count"].max()
+
+    denominator = 10*number_of_passes["pass_count"].sum()
+    nominator = (max_number_of_passes - number_of_passes["pass_count"]).sum()
+
+    centralisation_index = nominator/denominator
+
+    return centralisation_index
+
+@st.fragment
+def generate_isomorphic_graph(df_lines):
+    pass_graph = df_lines.apply(tuple, axis=1).tolist()
+    print(pass_graph)
+    ISO_Graph = nx.DiGraph()
+
+    for i in range(len(pass_graph)):
+        ISO_Graph.add_edge(pass_graph[i][0], pass_graph[i][1], weight=pass_graph[i][2])
+
+    ISO_edges = ISO_Graph.edges()
+    ISO_weights = [ISO_Graph[u][v]['weight'] for u, v in ISO_edges]
+
+    fig = plt.figure()
+
+    nx.draw(ISO_Graph, node_size=800, with_labels= True, node_color='white', width=ISO_weights)
+    plt.gca().collections[0].set_edgecolor('black')
+    
+    st.pyplot(fig)
+
+    return ISO_Graph
+
+@st.fragment
+def calculate_degree(ISO_Graph):
+    degrees_ISO = dict(nx.degree(ISO_Graph))
+    df_degrees_ISO = pd.DataFrame.from_dict(list(degrees_ISO.items()))
+
+    df_degrees_ISO.rename(columns = {
+        0: "Nome da Jogadora",
+        1: "Grau do Nó"
+        },
+        inplace=True
+    )     
+
+    fig = plt.figure()
+    X = list(degrees_ISO.keys())
+    Y = list(degrees_ISO.values())
+
+    sns.barplot(x=Y, y=X, palette="magma", legend=False)
+
+    plt.xticks(range(0, max(Y)+5, 2))
+    plt.xlabel("Grau")
+    plt.ylabel("Jogadora")
+
+    st.pyplot(fig)
+
+@st.fragment
+def calculate_in_degree(ISO_Graph):
+    degrees_ISO = dict(ISO_Graph.in_degree())
+    df_degrees_ISO = pd.DataFrame.from_dict(list(degrees_ISO.items()))
+
+    df_degrees_ISO.rename(columns = {
+        0: "Nome da Jogadora",
+        1: "Grau do Nó"
+        },
+        inplace=True
+    )     
+
+    fig = plt.figure()
+    X = list(degrees_ISO.keys())
+    Y = list(degrees_ISO.values())
+
+    sns.barplot(x=Y, y=X, palette="magma", legend=False)
+
+    plt.xticks(range(0, max(Y)+5, 2))
+    plt.xlabel("Grau")
+    plt.ylabel("Jogadora")
+
+    st.pyplot(fig)
+
+@st.fragment
+def calculate_out_degree(ISO_Graph):
+    degrees_ISO = dict(ISO_Graph.out_degree())
+    df_degrees_ISO = pd.DataFrame.from_dict(list(degrees_ISO.items()))
+
+    df_degrees_ISO.rename(columns = {
+        0: "Nome da Jogadora",
+        1: "Grau do Nó"
+        },
+        inplace=True
+    )     
+
+    fig = plt.figure()
+    X = list(degrees_ISO.keys())
+    Y = list(degrees_ISO.values())
+
+    sns.barplot(x=Y, y=X, palette="magma", legend=False)
+
+    plt.xticks(range(0, max(Y)+5, 2))
+    plt.xlabel("Grau")
+    plt.ylabel("Jogadora")
+
+    st.pyplot(fig)
+
+@st.fragment
+def calculate_player_metrics(ISO_Graph):
+    excentricity_ISO = nx.eccentricity(ISO_Graph, v=None, weight='weight')
+    avg_excentricity_ISO = sum(list(excentricity_ISO.values()))/len(excentricity_ISO)
+    
+    clustering_ISO = nx.clustering(ISO_Graph, weight='weight')
+    avg_clustering_ISO = nx.average_clustering(ISO_Graph, weight='weight')
+
+    betweenness_ISO = nx.betweenness_centrality(ISO_Graph, weight='weight')
+
+    closeness_ISO = nx.closeness_centrality(ISO_Graph)
+
+    ds =[excentricity_ISO, clustering_ISO, betweenness_ISO, closeness_ISO]
+    df_players = pd.DataFrame(ds)
+    df_players = df_players.transpose() 
+    df_players.rename(columns={0: 'Excentricidade', 1: 'Clustering', 2: 'Betweeness', 3: 'Closeness'}, inplace=True)
+
+    return df_players, avg_excentricity_ISO, avg_clustering_ISO
+# =====================================================================================================
 
 # Lendo as partidas totais da competição do CSV
 df_matches = load_matches()
@@ -139,29 +265,31 @@ for index, df_current_match in df_matches.iterrows():
     list_matches.append(df_current_match["home_team_name"].replace("Women's","") + " vs " + df_current_match["away_team_name"].replace("Women's",""))
 
 home_teams = df_matches["home_team_name"].unique()
-away_teams = df_matches["away_team_name"].unique()
+# away_teams = df_matches["away_team_name"].unique()
 
-# Unindo a lista de times
-for team in away_teams:
-    teams.append(team)
+# # Unindo a lista de times
+# for team in away_teams:
+#     teams.append(team)
     
-teams = sorted(teams)  
+teams = sorted(home_teams)  
 list_matches = sorted(list_matches)
 
 # Definindo o filtro de partidas
 teams_choice = st.sidebar.selectbox('Escolha o time:', teams)
-df_team_home = df_matches[df_matches['home_team_name'] == teams_choice]
-df_team_away = df_matches[df_matches['away_team_name'] == teams_choice]
-dfs=[df_team_home, df_team_away]
-df_matches = pd.concat(dfs)
+df_matches = df_matches[df_matches['home_team_name'] == teams_choice]
+# df_team_away = df_matches[df_matches['away_team_name'] == teams_choice]
+# dfs=[df_team_home, df_team_away]
+# df_matches = pd.concat(dfs)
 
 parser = Sbopen()
 
 # Definindo o título da dashboard
 st.title("Análise Baseada em Redes Complexas")
-st.subheader("Essa dashboard contém uma análise baseada em Redes Complexas da Copa do Mundo de Futebol Feminina de 2023")
-
+st.subheader("Essa dashboard contém uma análise baseada em Redes Complexas da Copa do Mundo de Futebol Feminino de 2023")
+st.image("./pages/cover2.jpg")
 st.markdown("--------------------------------------------------")
+
+# =====================================================================================================
 
 st.header(teams_choice.replace("Women's",""))
 st.text("As estatísticas abaixo contemplam todos os jogos de " + teams_choice.replace("Women's",""))
@@ -170,70 +298,50 @@ for index, df_current_match in df_matches.iterrows():
     df_passes=get_events(match_id = df_current_match['match_id'], match_home_team = df_current_match['home_team_name'])
     df_scatter = calculate_average_position(ht_first_sub_passes=df_passes)
     df_lines = calculate_passes(ht_first_sub_passes=df_passes)
+    plot_pitch(df_scatter, df_lines)
 
-    pitch = Pitch(pitch_color='grass', line_color='white', stripe=True)
-    fig, ax = pitch.draw()
+# =====================================================================================================
 
-    pitch.scatter(
-        df_scatter.x, 
-        df_scatter.y, 
-        s=df_scatter.marker_size,
-        color="red",
-        edgecolors="grey",
-        linewidth=1, 
-        alpha=1, 
-        ax=ax, 
-        zorder = 3
-    )
+    st.markdown("#### Métricas das Jogadoras")
+    
+    ISO_Graph = generate_isomorphic_graph(df_lines=df_lines)
 
-    for i, row in df_scatter.iterrows():
-        pitch.annotate(
-            row.player_name, 
-            xy=(row.x, row.y), 
-            c='black', 
-            va='center', 
-            ha='center', 
-            weight = "bold", 
-            size=16, 
-            ax=ax, 
-            zorder = 4
-        )
+# =====================================================================================================
 
-    for i, row in df_lines.iterrows():
-            player1 = row["player_name"]
-            player2 = row["pass_recipient_name"]
-        
-            player1_x = df_scatter.loc[df_scatter["player_name"] == player1]['x'].iloc[0]
-            player1_y = df_scatter.loc[df_scatter["player_name"] == player1]['y'].iloc[0]
-            
-            player2_x = df_scatter.loc[df_scatter["player_name"] == player2]['x'].iloc[0]
-            player2_y = df_scatter.loc[df_scatter["player_name"] == player2]['y'].iloc[0]
+    st.markdown("#### Graus das Jogadoras - Total")
 
-            num_passes = row["pass_count"]
-            line_width = (num_passes / df_lines['pass_count'].max() * 10)
-        
-            pitch.lines(
-                player1_x, 
-                player1_y, 
-                player2_x, 
-                player2_y,
-                alpha=1, 
-                lw=line_width, 
-                zorder=2, 
-                color="red", 
-                ax = ax
-            )
+    calculate_degree(ISO_Graph=ISO_Graph)
 
-    st.pyplot(plt.gcf())
-    # plt.show()
-    # pitch = Pitch(pitch_color='grass', line_color='white', stripe=True)
-    # fig, ax = pitch.grid(grid_height=0.9, title_height=0.06, axis=False, endnote_height=0.04, title_space=0, endnote_space=0)
-    # plot_pitch(df_scatter, df_lines)
-    # plt.show()
-    # st.pyplot(fig)
+# =====================================================================================================
+
+    st.markdown("#### Graus das Jogadoras - Entrada")
+
+    calculate_in_degree(ISO_Graph=ISO_Graph)
+
+# =====================================================================================================
+
+    st.markdown("#### Graus das Jogadoras - Saída")
+
+    calculate_out_degree(ISO_Graph=ISO_Graph)
+
+# =====================================================================================================
+    st.markdown("#### Centralidade das Jogadoras")
+
+    df_players, avg_excentricity_ISO, avg_clustering_ISO = calculate_player_metrics(ISO_Graph)
+
+    st.dataframe(df_players)
+
+# =====================================================================================================
+
+    st.markdown("#### Métricas do Time")
+    
+    team_centralization = calculate_team_centralization(ht_first_sub_passes=df_passes)
+    st.text("A centralização do time foi de " + "%.2f" % team_centralization)
+    st.text("A excentricidade média do time foi de " + "%.2f" % avg_excentricity_ISO)   
+    st.text("O coeficiente de clustering médio do time foi de " + "%.2f" % avg_clustering_ISO)   
+# =====================================================================================================
 
     st.markdown("--------------------------------------------------")
-
 
     
 
