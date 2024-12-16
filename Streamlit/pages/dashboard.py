@@ -265,21 +265,12 @@ for index, df_current_match in df_matches.iterrows():
     list_matches.append(df_current_match["home_team_name"].replace("Women's","") + " vs " + df_current_match["away_team_name"].replace("Women's",""))
 
 home_teams = df_matches["home_team_name"].unique()
-# away_teams = df_matches["away_team_name"].unique()
-
-# # Unindo a lista de times
-# for team in away_teams:
-#     teams.append(team)
-    
 teams = sorted(home_teams)  
 list_matches = sorted(list_matches)
 
 # Definindo o filtro de partidas
 teams_choice = st.sidebar.selectbox('Escolha o time:', teams)
 df_matches = df_matches[df_matches['home_team_name'] == teams_choice]
-# df_team_away = df_matches[df_matches['away_team_name'] == teams_choice]
-# dfs=[df_team_home, df_team_away]
-# df_matches = pd.concat(dfs)
 
 parser = Sbopen()
 
@@ -342,25 +333,3 @@ for index, df_current_match in df_matches.iterrows():
 # =====================================================================================================
 
     st.markdown("--------------------------------------------------")
-
-    
-
-# df_passes = get_events(df_current_match["match_id"])
-# st.dataframe(df_passes)
-# df = df[df['position'].isin(position_choice)]
-# df = df[df['team'].isin(teams_choice)]
-# table = pd.DataFrame({})
-# st.table(table)
-# st.dataframe(table)
-# É possível utilizar markdown também
-# st.image("image")
-# st.markdown("")
-# Bom para fórmulas matemáticas
-# st.latex("")
-# st.json()
-# 
-# code="""
-# 
-# """
-# st.code(code, language="python")
-# st.metric()
